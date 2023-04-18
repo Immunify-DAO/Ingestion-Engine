@@ -1,0 +1,23 @@
+[package]
+name = "immune-health"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "*"
+sha2 = "*"
+
+[dev-dependencies]
+criterion = "*"
+
+[lib]
+name = "lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "bin"
+path = "src/main.rs"
+
+[[bench]]
+name = "bench"
+harness = false
