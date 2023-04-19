@@ -1,20 +1,31 @@
 use std::{fs::File, io::Read};
-use anyhow::{Result, bail};
-use sha2::{Sha256, Digest};
+use anyhow::Result;
+pub use sha2::{Sha256, Sha512, Digest};
 
-pub fn hash_file(file_name: &str) -> Result<[u8; 32]> {
-    let mut hasher = Sha256::new();
+const SIZE: usize = 0x800;
+
+pub fn hash_file<D: Digest>(file_name: &str) -> Result<Vec<u8>> {
+    let mut hasher = D::new();
     let mut file = File::open(file_name)?;
-    let mut file_data = Vec::new();
-
-    file.read_to_end(&mut file_data)?;
-    hasher.update(&file_data);
+    let mut file_data = vec![0; SIZE];
+    
+    loop {
+        let amt_data_read = file.read(&mut file_data)?;
+        if amt_data_read == SIZE {
+            hasher.update(&file_data);
+        } else {
+            hasher.update(&file_data[0..amt_data_read]);
+            break;
+        }
+    }
 
     let hash = hasher.finalize();
-    let mut ret: [u8; 32] = <[u8; 32]>::default();
+    
+    let sz = <D as Digest>::output_size();
+    let mut ret = vec![0; sz];
 
     ret.copy_from_slice(&hash);
-
+    
     Ok(ret)
 }
 
@@ -36,12 +47,19 @@ mod tests {
 
     #[test]
     fn test_sha256_sum() {
-        let hash = hash_file("test_data/test1.bin").expect("didnt hash properly");
+        let hash = hash_file::<Sha256>("test_data/test1.bin").expect("didnt hash properly");
         let hash_string = hex_to_string(&hash);
         let expected_result = "f0887fe961c9cd3beab957e8222494abb969b1ce4c6557976df8b0f6d20e9166"; 
         assert_eq!(&hash_string, expected_result);
 
     }
 
+    #[test]
+    fn test_sha512_sum() {
+        let hash = hash_file::<Sha512>("test_data/test_512.bin").expect("didnt hash properly");
+        let hash_string = hex_to_string(&hash);
+        let expected_result = "a9db490c708cc72548d78635aa7da79bb253f945d710e5cb677a474efc7c65a2aab45bc7ca1113c8ce0f3c32e1399de9c459535e8816521ab714b2a6cd200525"; 
+        assert_eq!(&hash_string, expected_result);
 
+    }
 }
